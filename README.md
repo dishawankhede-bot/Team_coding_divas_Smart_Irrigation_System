@@ -1,4 +1,5 @@
 # Team_coding_divas_Smart_Irrigation_System
+Team Name: Coding Divas
 # 🌱 Smart Irrigation System
 
 ## 📌 Overview
