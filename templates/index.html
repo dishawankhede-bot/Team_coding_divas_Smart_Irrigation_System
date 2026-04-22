@@ -1,0 +1,615 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Smart Irrigation System</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+  :root {
+    --green: #2ecc71; --dark-green: #27ae60;
+    --blue: #3498db;  --dark-blue: #2980b9;
+    --orange: #e67e22; --red: #e74c3c;
+    --bg: #0f1923;    --card: #1a2634;
+    --card2: #1e2f40; --text: #ecf0f1; --muted: #7f8c8d;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text); font-family: 'Segoe UI', sans-serif; min-height: 100vh; }
+
+  /* ── Welcome Screen ── */
+  #welcome {
+    display: flex; flex-direction: column; align-items: center;
+    justify-content: center; height: 100vh; text-align: center; gap: 20px;
+    background: radial-gradient(ellipse at center, #1a3a2a 0%, #0f1923 70%);
+  }
+  #welcome h1 { font-size: 2.8rem; color: var(--green); }
+  #welcome p  { color: var(--muted); font-size: 1.1rem; max-width: 500px; }
+  .btn-start {
+    padding: 14px 40px; font-size: 1.1rem; border: none; border-radius: 30px;
+    background: var(--green); color: #fff; cursor: pointer; font-weight: 600;
+    transition: transform .2s, background .2s;
+  }
+  .btn-start:hover { background: var(--dark-green); transform: scale(1.05); }
+
+  /* ── Dashboard ── */
+  #dashboard { display: none; padding: 20px; }
+  header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 12px 20px; background: var(--card); border-radius: 12px;
+    margin-bottom: 20px;
+  }
+  header h2 { color: var(--green); font-size: 1.3rem; }
+  .status-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--green); display: inline-block; margin-right: 6px; animation: pulse 1.5s infinite; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.3} }
+
+  /* ── Cards Grid ── */
+  .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 16px; margin-bottom: 20px; }
+  .card {
+    background: var(--card); border-radius: 14px; padding: 20px;
+    text-align: center; border: 1px solid #2a3f55;
+  }
+  .card .label { font-size: .8rem; color: var(--muted); margin-bottom: 8px; text-transform: uppercase; letter-spacing: 1px; }
+  .card .value { font-size: 2rem; font-weight: 700; }
+  .card .sub   { font-size: .8rem; color: var(--muted); margin-top: 4px; }
+  .moisture-val { color: var(--blue); }
+  .pump-on  { color: var(--green); }
+  .pump-off { color: var(--red); }
+  .weather-val { color: #f1c40f; }
+  .tank-val { color: var(--blue); }
+
+  /* ── Tank Bar ── */
+  .tank-bar-wrap { background: #0f1923; border-radius: 8px; height: 12px; margin-top: 8px; overflow: hidden; }
+  .tank-bar-fill { height: 100%; background: var(--blue); border-radius: 8px; transition: width .5s; }
+
+  /* ── Buttons ── */
+  .controls { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 20px; }
+  .btn {
+    padding: 10px 20px; border: none; border-radius: 8px; cursor: pointer;
+    font-weight: 600; font-size: .9rem; transition: opacity .2s, transform .1s;
+  }
+  .btn:hover { opacity: .85; transform: translateY(-1px); }
+  .btn:active { transform: translateY(0); }
+  .btn-green  { background: var(--green);  color: #fff; }
+  .btn-blue   { background: var(--blue);   color: #fff; }
+  .btn-orange { background: var(--orange); color: #fff; }
+  .btn-red    { background: var(--red);    color: #fff; }
+  .btn-purple { background: #9b59b6;       color: #fff; }
+  .btn-teal   { background: #1abc9c;       color: #fff; }
+  .btn-active { box-shadow: 0 0 0 3px rgba(46,204,113,.5); }
+
+  /* ── Threshold ── */
+  .threshold-row { display: flex; align-items: center; gap: 12px; margin-bottom: 20px; flex-wrap: wrap; }
+  .threshold-row label { color: var(--muted); font-size: .9rem; }
+  .threshold-row input[type=range] { flex: 1; min-width: 150px; accent-color: var(--green); }
+  #thresholdDisplay { color: var(--green); font-weight: 700; min-width: 40px; }
+
+  /* ── Bottom Grid ── */
+  .bottom-grid { display: grid; grid-template-columns: 2fr 1fr; gap: 16px; margin-bottom: 20px; }
+  @media(max-width:768px){ .bottom-grid { grid-template-columns: 1fr; } }
+
+  .panel { background: var(--card); border-radius: 14px; padding: 20px; border: 1px solid #2a3f55; }
+  .panel h3 { font-size: 1rem; color: var(--green); margin-bottom: 14px; }
+
+  /* ── Sensors ── */
+  .sensor-item { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid #2a3f55; }
+  .sensor-item:last-child { border-bottom: none; }
+  .sensor-bar-wrap { flex: 1; margin: 0 12px; background: #0f1923; border-radius: 6px; height: 8px; overflow: hidden; }
+  .sensor-bar { height: 100%; border-radius: 6px; background: var(--blue); transition: width .5s; }
+
+  /* ── Alerts ── */
+  .alert-item { background: #2a1a1a; border-left: 3px solid var(--red); padding: 8px 12px; border-radius: 6px; margin-bottom: 8px; font-size: .88rem; }
+  .no-alert { color: var(--green); font-size: .9rem; }
+
+  /* ── Stats ── */
+  .stat-row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #2a3f55; font-size: .9rem; }
+  .stat-row:last-child { border-bottom: none; }
+  .stat-val { color: var(--green); font-weight: 700; }
+
+  /* ── Explanation ── */
+  #explanationBox {
+    background: var(--card2); border-radius: 10px; padding: 14px 18px;
+    font-size: .9rem; color: #a8d8b9; border-left: 4px solid var(--green);
+    margin-bottom: 20px; display: none;
+  }
+
+  /* ── Logs ── */
+  #logsPanel { margin-bottom: 20px; }
+  .log-item { font-size: .8rem; color: var(--muted); padding: 5px 0; border-bottom: 1px solid #1e2f40; }
+
+  /* ── Toast ── */
+  #toast {
+    position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%) translateY(80px);
+    background: #1abc9c; color: #fff; padding: 10px 24px; border-radius: 30px;
+    font-size: .9rem; font-weight: 600; transition: transform .3s ease; z-index: 999;
+    pointer-events: none;
+  }
+  #toast.show { transform: translateX(-50%) translateY(0); }
+
+  /* ── Modal ── */
+  .modal-overlay {
+    display: none; position: fixed; inset: 0; background: rgba(0,0,0,.7);
+    z-index: 100; align-items: center; justify-content: center;
+  }
+  .modal-overlay.open { display: flex; }
+  .modal {
+    background: var(--card); border-radius: 16px; padding: 28px; width: 90%; max-width: 600px;
+    border: 1px solid #2a3f55; max-height: 80vh; overflow-y: auto;
+  }
+  .modal h3 { color: var(--green); margin-bottom: 16px; }
+  .modal-close {
+    float: right; background: none; border: none; color: var(--muted);
+    font-size: 1.4rem; cursor: pointer; line-height: 1;
+  }
+  .modal-close:hover { color: var(--red); }
+  .history-row { display: grid; grid-template-columns: 1fr 1fr 1fr 1fr 1fr; gap: 8px;
+    font-size: .78rem; padding: 6px 0; border-bottom: 1px solid #2a3f55; }
+  .history-row.header { color: var(--green); font-weight: 700; }
+
+  /* ── Pump toggle ── */
+  .pump-manual-row { display: flex; align-items: center; gap: 12px; margin-bottom: 20px; flex-wrap: wrap; }
+  .pump-manual-row label { color: var(--muted); font-size: .9rem; }
+  .toggle-switch { position: relative; width: 52px; height: 28px; }
+  .toggle-switch input { opacity: 0; width: 0; height: 0; }
+  .toggle-slider {
+    position: absolute; inset: 0; background: #e74c3c; border-radius: 28px; cursor: pointer;
+    transition: background .3s;
+  }
+  .toggle-slider:before {
+    content: ""; position: absolute; width: 20px; height: 20px; left: 4px; top: 4px;
+    background: #fff; border-radius: 50%; transition: transform .3s;
+  }
+  input:checked + .toggle-slider { background: var(--green); }
+  input:checked + .toggle-slider:before { transform: translateX(24px); }
+  #pumpToggleLabel { font-weight: 700; color: var(--red); min-width: 30px; }
+</style>
+</head>
+<body>
+
+<!-- ══ TOAST ══ -->
+<div id="toast"></div>
+
+<!-- ══ HISTORY MODAL ══ -->
+<div class="modal-overlay" id="historyModal">
+  <div class="modal">
+    <button class="modal-close" onclick="closeModal('historyModal')">✕</button>
+    <h3>📜 Database History</h3>
+    <div class="history-row header">
+      <span>Sensor</span><span>Moisture</span><span>Weather</span><span>Pump</span><span>Tank</span>
+    </div>
+    <div id="historyRows"></div>
+  </div>
+</div>
+
+<!-- ══ WELCOME SCREEN ══ -->
+<div id="welcome">
+  <div style="font-size:4rem">🌱</div>
+  <h1>Smart Irrigation System</h1>
+  <p>AI-Based Soil Moisture Monitoring & Water Optimization — powered by real-time sensors and intelligent automation.</p>
+  <button class="btn-start" onclick="startDashboard()">▶ Start System</button>
+</div>
+
+<!-- ══ DASHBOARD ══ -->
+<div id="dashboard">
+  <header>
+    <h2>🌱 Smart Irrigation Dashboard</h2>
+    <div><span class="status-dot"></span><span style="font-size:.85rem;color:var(--muted)">System Online</span></div>
+  </header>
+
+  <!-- Metric Cards -->
+  <div class="cards">
+    <div class="card">
+      <div class="label">Soil Moisture</div>
+      <div class="value moisture-val" id="moistureVal">--</div>
+      <div class="sub">%</div>
+    </div>
+    <div class="card">
+      <div class="label">Pump Status</div>
+      <div class="value" id="pumpVal">--</div>
+    </div>
+    <div class="card">
+      <div class="label">Weather</div>
+      <div class="value weather-val" id="weatherVal">--</div>
+    </div>
+    <div class="card">
+      <div class="label">Tank Level</div>
+      <div class="value tank-val" id="tankVal">--</div>
+      <div class="sub">%</div>
+      <div class="tank-bar-wrap"><div class="tank-bar-fill" id="tankBar" style="width:100%"></div></div>
+    </div>
+    <div class="card">
+      <div class="label">Threshold</div>
+      <div class="value" id="thresholdCard" style="color:#9b59b6">40</div>
+      <div class="sub">%</div>
+    </div>
+    <div class="card">
+      <div class="label">Readings</div>
+      <div class="value" id="countVal" style="color:#1abc9c">0</div>
+      <div class="sub">total</div>
+    </div>
+  </div>
+
+  <!-- Threshold Slider -->
+  <div class="threshold-row">
+    <label>Moisture Threshold:</label>
+    <input type="range" min="10" max="80" value="40" id="thresholdSlider" oninput="updateThreshold(this.value)"/>
+    <span id="thresholdDisplay">40%</span>
+  </div>
+
+  <!-- Control Buttons -->
+  <div class="controls">
+    <button class="btn btn-green"  onclick="generateMoisture()">💧 Generate Moisture</button>
+    <button class="btn btn-blue"   id="autoBtn" onclick="toggleAuto()">🤖 Auto Mode</button>
+    <button class="btn btn-orange" onclick="refillTank()">🪣 Refill Tank</button>
+    <button class="btn btn-purple" onclick="changeWeather()">🌦 Change Weather</button>
+    <button class="btn btn-teal"   onclick="explainDecision()">🧠 Explain Decision</button>
+    <button class="btn btn-red"    onclick="showStats()">📊 Statistics</button>
+    <button class="btn" style="background:#34495e;color:#fff" onclick="viewHistory()">📜 DB History</button>
+    <button class="btn" style="background:#c0392b;color:#fff" onclick="clearHistory()">🗑 Clear History</button>
+  </div>
+
+  <!-- Manual Pump Toggle -->
+  <div class="pump-manual-row">
+    <label>Manual Pump Override:</label>
+    <label class="toggle-switch">
+      <input type="checkbox" id="pumpToggle" onchange="manualPump(this.checked)"/>
+      <span class="toggle-slider"></span>
+    </label>
+    <span id="pumpToggleLabel">OFF</span>
+    <span style="color:var(--muted);font-size:.8rem">(overrides auto logic)</span>
+  </div>
+
+  <!-- Explanation Box -->
+  <div id="explanationBox">
+    <span id="explanationText"></span>
+    <button onclick="document.getElementById('explanationBox').style.display='none'"
+      style="float:right;background:none;border:none;color:#a8d8b9;cursor:pointer;font-size:1rem">✕</button>
+  </div>
+
+  <!-- Bottom Grid: Chart + Side Panels -->
+  <div class="bottom-grid">
+    <!-- Chart -->
+    <div class="panel">
+      <h3>📈 Moisture Trend</h3>
+      <canvas id="moistureChart" height="120"></canvas>
+    </div>
+
+    <!-- Alerts -->
+    <div class="panel">
+      <h3>🚨 Alerts</h3>
+      <div id="alertsBox"><p class="no-alert">✅ All systems normal</p></div>
+    </div>
+  </div>
+
+  <!-- Sensors + Stats -->
+  <div class="bottom-grid">
+    <div class="panel">
+      <h3>📡 Multi-Sensor Data</h3>
+      <div id="sensorsBox"></div>
+    </div>
+    <div class="panel" id="statsPanel">
+      <h3>📊 Statistics</h3>
+      <div id="statsBox">
+        <div class="stat-row"><span>Average</span><span class="stat-val" id="statAvg">--</span></div>
+        <div class="stat-row"><span>Minimum</span><span class="stat-val" id="statMin">--</span></div>
+        <div class="stat-row"><span>Maximum</span><span class="stat-val" id="statMax">--</span></div>
+        <div class="stat-row"><span>Total Readings</span><span class="stat-val" id="statCount">--</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- System Logs -->
+  <div class="panel" id="logsPanel">
+    <h3>🗒 System Logs</h3>
+    <div id="logsBox"></div>
+  </div>
+</div>
+
+<script>
+// ── State ────────────────────────────────────────────────────
+let autoInterval  = null;
+let chartLabels   = [];
+let chartData     = [];
+let readingCount  = 0;
+let lastData      = null;
+let manualPumpOn  = false;
+
+const API = "http://127.0.0.1:5000";  // Flask backend base URL
+
+// ── Chart Setup ──────────────────────────────────────────────
+const ctx = document.getElementById("moistureChart").getContext("2d");
+const moistureChart = new Chart(ctx, {
+  type: "line",
+  data: {
+    labels: chartLabels,
+    datasets: [{
+      label: "Soil Moisture (%)",
+      data: chartData,
+      borderColor: "#3498db",
+      backgroundColor: "rgba(52,152,219,.15)",
+      tension: 0.4, fill: true, pointRadius: 4,
+      pointBackgroundColor: "#3498db"
+    }]
+  },
+  options: {
+    responsive: true,
+    plugins: { legend: { labels: { color: "#ecf0f1" } } },
+    scales: {
+      x: { ticks: { color: "#7f8c8d" }, grid: { color: "#1e2f40" } },
+      y: { min: 0, max: 100, ticks: { color: "#7f8c8d" }, grid: { color: "#1e2f40" } }
+    }
+  }
+});
+
+// ── Toast ────────────────────────────────────────────────────
+let toastTimer = null;
+function showToast(msg, color = "#1abc9c") {
+  const t = document.getElementById("toast");
+  t.textContent = msg;
+  t.style.background = color;
+  t.classList.add("show");
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove("show"), 2500);
+}
+
+// ── Modal ────────────────────────────────────────────────────
+function closeModal(id) { document.getElementById(id).classList.remove("open"); }
+
+// ── Welcome → Dashboard ──────────────────────────────────────
+function startDashboard() {
+  document.getElementById("welcome").style.display   = "none";
+  document.getElementById("dashboard").style.display = "block";
+  fetchStats();
+  fetchLogs();
+}
+
+// ── Generate Moisture ────────────────────────────────────────
+async function generateMoisture() {
+  const btn = document.querySelector(".btn-green");
+  btn.textContent = "⏳ Generating...";
+  btn.disabled = true;
+  try {
+    const res  = await fetch(API + "/generate");
+    const data = await res.json();
+    lastData = data;
+    updateCards(data);
+    updateChart(data.moisture);
+    updateSensors(data.sensor_data);
+    updateAlerts(data.alerts);
+    readingCount++;
+    document.getElementById("countVal").textContent = readingCount;
+    // Sync manual pump toggle with auto result (only if not in manual override)
+    if (!manualPumpOn) {
+      const toggle = document.getElementById("pumpToggle");
+      toggle.checked = data.pump === "ON";
+      syncPumpLabel(data.pump === "ON");
+    }
+    fetchStats();
+    fetchLogs();
+  } catch(e) {
+    showToast("❌ Connection error", "#e74c3c");
+  }
+  btn.textContent = "💧 Generate Moisture";
+  btn.disabled = false;
+}
+
+function updateCards(data) {
+  document.getElementById("moistureVal").textContent = data.moisture;
+  const pumpEl = document.getElementById("pumpVal");
+  pumpEl.textContent = data.pump;
+  pumpEl.className   = "value " + (data.pump === "ON" ? "pump-on" : "pump-off");
+  const wEl = document.getElementById("weatherVal");
+  wEl.textContent = weatherEmoji(data.weather) + " " + data.weather;
+  // Flash weather card on change
+  wEl.style.transition = "opacity .2s";
+  wEl.style.opacity = "0";
+  setTimeout(() => wEl.style.opacity = "1", 200);
+  document.getElementById("tankVal").textContent     = data.tank;
+  document.getElementById("tankBar").style.width     = data.tank + "%";
+  document.getElementById("tankBar").style.background = data.tank < 20 ? "#e74c3c" : "#3498db";
+  document.getElementById("thresholdCard").textContent = data.threshold;
+}
+
+function weatherEmoji(w) {
+  return w === "Sunny" ? "☀️" : w === "Rainy" ? "🌧️" : "☁️";
+}
+
+function updateChart(moisture) {
+  const now = new Date().toLocaleTimeString();
+  chartLabels.push(now);
+  chartData.push(moisture);
+  if (chartLabels.length > 20) { chartLabels.shift(); chartData.shift(); }
+  moistureChart.update();
+}
+
+function updateSensors(sensors) {
+  const box = document.getElementById("sensorsBox");
+  box.innerHTML = Object.entries(sensors).map(([id, val]) => `
+    <div class="sensor-item">
+      <span style="min-width:70px;font-size:.85rem">${id}</span>
+      <div class="sensor-bar-wrap">
+        <div class="sensor-bar" style="width:${val}%;background:${val<40?'#e74c3c':'#3498db'}"></div>
+      </div>
+      <span style="min-width:40px;text-align:right;font-weight:700;color:${val<40?'#e74c3c':'#3498db'}">${val}%</span>
+    </div>`).join("");
+}
+
+function updateAlerts(alerts) {
+  const box = document.getElementById("alertsBox");
+  if (!alerts || alerts.length === 0) {
+    box.innerHTML = '<p class="no-alert">✅ All systems normal</p>';
+  } else {
+    box.innerHTML = alerts.map(a => `<div class="alert-item">${a}</div>`).join("");
+  }
+}
+
+// ── Auto Mode ────────────────────────────────────────────────
+function toggleAuto() {
+  const btn = document.getElementById("autoBtn");
+  if (autoInterval) {
+    clearInterval(autoInterval);
+    autoInterval = null;
+    btn.textContent = "🤖 Auto Mode";
+    btn.classList.remove("btn-active");
+    showToast("⏹ Auto mode stopped");
+  } else {
+    generateMoisture();
+    autoInterval = setInterval(generateMoisture, 2000);
+    btn.textContent = "⏹ Stop Auto";
+    btn.classList.add("btn-active");
+    showToast("🤖 Auto mode started — every 2s");
+  }
+}
+
+// ── Refill Tank ──────────────────────────────────────────────
+async function refillTank() {
+  const res  = await fetch(API + "/refill", { method: "POST" });
+  const data = await res.json();
+  document.getElementById("tankVal").textContent = data.tank;
+  document.getElementById("tankBar").style.width = data.tank + "%";
+  document.getElementById("tankBar").style.background = "#3498db";
+  showToast("🪣 Tank refilled to 100%");
+  fetchLogs();
+}
+
+// ── Change Weather ───────────────────────────────────────────
+async function changeWeather() {
+  const res  = await fetch(API + "/weather", { method: "POST" });
+  const data = await res.json();
+  const label = weatherEmoji(data.weather) + " " + data.weather;
+  document.getElementById("weatherVal").textContent = label;
+  showToast("🌦 Weather changed to " + data.weather);
+}
+
+// ── Threshold Slider ─────────────────────────────────────────
+async function updateThreshold(val) {
+  document.getElementById("thresholdDisplay").textContent = val + "%";
+  document.getElementById("thresholdCard").textContent    = val;
+  await fetch(API + "/threshold", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ value: parseInt(val) })
+  });
+  showToast("🎚 Threshold set to " + val + "%");
+  // Re-evaluate pump status live if we have last data
+  if (lastData) {
+    const pump = lastData.moisture < parseInt(val) ? "ON" : "OFF";
+    const pumpEl = document.getElementById("pumpVal");
+    pumpEl.textContent = pump;
+    pumpEl.className   = "value " + (pump === "ON" ? "pump-on" : "pump-off");
+  }
+}
+
+// ── Manual Pump Toggle ───────────────────────────────────────
+async function manualPump(isOn) {
+  manualPumpOn = isOn;
+  syncPumpLabel(isOn);
+  const pumpEl = document.getElementById("pumpVal");
+  pumpEl.textContent = isOn ? "ON" : "OFF";
+  pumpEl.className   = "value " + (isOn ? "pump-on" : "pump-off");
+  showToast(isOn ? "🚿 Pump manually turned ON" : "🔴 Pump manually turned OFF", isOn ? "#2ecc71" : "#e74c3c");
+}
+
+function syncPumpLabel(isOn) {
+  const lbl = document.getElementById("pumpToggleLabel");
+  lbl.textContent = isOn ? "ON" : "OFF";
+  lbl.style.color = isOn ? "#2ecc71" : "#e74c3c";
+}
+
+// ── Explain Decision ─────────────────────────────────────────
+function explainDecision() {
+  const box  = document.getElementById("explanationBox");
+  const text = document.getElementById("explanationText");
+  if (lastData) {
+    text.textContent = "🧠 " + lastData.explanation;
+    box.style.display = "block";
+  } else {
+    text.textContent = "⚠️ Generate a reading first.";
+    box.style.display = "block";
+  }
+}
+
+// ── Statistics ───────────────────────────────────────────────
+async function fetchStats() {
+  const res  = await fetch(API + "/statistics");
+  const data = await res.json();
+  document.getElementById("statAvg").textContent   = data.avg + "%";
+  document.getElementById("statMin").textContent   = data.min + "%";
+  document.getElementById("statMax").textContent   = data.max + "%";
+  document.getElementById("statCount").textContent = data.count;
+}
+
+function showStats() {
+  fetchStats();
+  const panel = document.getElementById("statsPanel");
+  panel.style.border = "1px solid var(--green)";
+  setTimeout(() => panel.style.border = "1px solid #2a3f55", 1500);
+  panel.scrollIntoView({ behavior: "smooth" });
+  showToast("📊 Statistics updated");
+}
+
+// ── DB History Modal ─────────────────────────────────────────
+async function viewHistory() {
+  const modal = document.getElementById("historyModal");
+  const rows  = document.getElementById("historyRows");
+  rows.innerHTML = '<p style="color:var(--muted)">Loading...</p>';
+  modal.classList.add("open");
+  try {
+    const res  = await fetch(API + "/history");
+    const data = await res.json();
+    const list = data.db_history;
+    if (!list || list.length === 0) {
+      rows.innerHTML = '<p style="color:var(--muted);font-size:.85rem">No records in database yet.</p>';
+      return;
+    }
+    rows.innerHTML = list.map(r => `
+      <div class="history-row">
+        <span>${r.sensor_id}</span>
+        <span style="color:#3498db">${r.moisture_value}%</span>
+        <span>${r.weather}</span>
+        <span style="color:${r.pump_status==='ON'?'#2ecc71':'#e74c3c'}">${r.pump_status}</span>
+        <span>${r.tank_level}%</span>
+      </div>`).join("");
+  } catch(e) {
+    rows.innerHTML = '<p style="color:#e74c3c">Could not load history (DB may be offline).</p>';
+  }
+}
+
+// ── Clear History ────────────────────────────────────────────
+function clearHistory() {
+  if (!confirm("Clear all in-memory history and reset the chart?")) return;
+  chartLabels.length = 0;
+  chartData.length   = 0;
+  moistureChart.update();
+  readingCount = 0;
+  lastData     = null;
+  document.getElementById("countVal").textContent = 0;
+  document.getElementById("statAvg").textContent  = "--";
+  document.getElementById("statMin").textContent  = "--";
+  document.getElementById("statMax").textContent  = "--";
+  document.getElementById("statCount").textContent = "--";
+  document.getElementById("explanationBox").style.display = "none";
+  document.getElementById("alertsBox").innerHTML = '<p class="no-alert">✅ All systems normal</p>';
+  showToast("🗑 History cleared", "#e67e22");
+  // Also reset backend memory
+  fetch(API + "/reset", { method: "POST" }).catch(() => {});
+}
+
+// ── Logs ─────────────────────────────────────────────────────
+async function fetchLogs() {
+  try {
+    const res  = await fetch(API + "/logs");
+    const logs = await res.json();
+    const box  = document.getElementById("logsBox");
+    if (!logs.length) {
+      box.innerHTML = '<p style="color:var(--muted);font-size:.85rem">No logs yet.</p>';
+      return;
+    }
+    box.innerHTML = logs.map(l =>
+      `<div class="log-item">[${l.timestamp}] ${l.message}</div>`
+    ).join("");
+  } catch(e) {}
+}
+</script>
+
+</body>
+</html>
