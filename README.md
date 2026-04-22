@@ -39,7 +39,23 @@ The **Smart Irrigation System** is an IoT-based project designed to automate the
 
 * Arduino IDE
 * Embedded C / C++
+* Python (for data processing)
+* JavaScript (for visualization)
+* MySQL (for database storage)
 * (Optional) IoT Platform (Blynk / Firebase / MQTT)
+
+---
+
+## 🧠 Data Structures Used
+
+| Structure     | Language   | Used For                     |
+| ------------- | ---------- | ---------------------------- |
+| List          | Python     | All moisture readings        |
+| Dictionary    | Python     | Sensor values + system state |
+| deque (Queue) | Python     | Latest 5 readings (FIFO)     |
+| List          | Python     | Weather types                |
+| Array         | JavaScript | Chart data points            |
+| Tables        | MySQL      | Persistent storage           |
 
 ---
 
@@ -53,14 +69,15 @@ The **Smart Irrigation System** is an IoT-based project designed to automate the
 4. If moisture level is above threshold:
 
    * Water pump turns **OFF**
-5. (Optional) Data is sent to a cloud platform or mobile app.
+5. (Optional) Data is stored in database and visualized on dashboard.
 
 ---
 
 ## 🧠 System Architecture
 
 * Sensors → Microcontroller → Relay → Pump
-* (Optional) Microcontroller → Cloud → Mobile App
+* Microcontroller → Python Processing → MySQL Database
+* Database → JavaScript Dashboard (Charts)
 
 ---
 
@@ -68,9 +85,9 @@ The **Smart Irrigation System** is an IoT-based project designed to automate the
 
 * Automatic watering system
 * Water conservation
-* Low-cost and easy to implement
-* Scalable for agriculture use
-* Optional remote monitoring
+* Real-time monitoring
+* Data visualization using charts
+* Low-cost and scalable solution
 
 ---
 
@@ -90,7 +107,12 @@ The **Smart Irrigation System** is an IoT-based project designed to automate the
 Smart_Irrigation_System/
 │── code/
 │   └── main.ino
-│── images/
+│── backend/
+│   └── data_processing.py
+│── frontend/
+│   └── dashboard.js
+│── database/
+│   └── schema.sql
 │── README.md
 │── documentation/
 ```
@@ -102,8 +124,9 @@ Smart_Irrigation_System/
 1. Install Arduino IDE
 2. Connect hardware components properly
 3. Upload the code to the microcontroller
-4. Power the system
-5. Monitor the system output
+4. Set up Python environment and MySQL database
+5. Run backend script
+6. Open dashboard for visualization
 
 ---
 
